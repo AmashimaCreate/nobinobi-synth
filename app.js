@@ -654,13 +654,10 @@ function initApp() {
     el.volume.value = String(Math.round(state.volume * 100));
     el.voice.value = state.voice;
     el.app.classList.toggle('full', state.full);
-    el.fullBtn.setAttribute('aria-pressed', String(state.full));
-    el.fullBtn.setAttribute('aria-label', state.full ? TEXT_FULL.off : TEXT_FULL.on);
-    el.fullBtn.title = state.full ? TEXT_FULL.off : TEXT_FULL.on;
+    el.fullBtn.setAttribute('aria-pressed', String(state.full));   // ラベルは固定（HTML）。状態は押されているかどうかで伝える
   }
 
   // 文字と操作部をしまう／もどす。画面の大きさが変わるので、鳴っている音は止める
-  const TEXT_FULL = { on: '文字をしまって、どうぶつを画面いっぱいにする', off: '文字とボタンをもどす' };
   function setFull(on) {
     if (state.full === on) return;
     allOff();
@@ -702,7 +699,17 @@ function initApp() {
   el.snapBtn.addEventListener('click', () => {
     state.snap = !state.snap; saveSettings(); renderControls(); updatePitch(false);
   });
-  el.fullBtn.addEventListener('click', () => setFull(!state.full));
+  el.fullBtn.addEventListener('click', (e) => {
+    setFull(!state.full);
+    if (e.detail > 0) el.fullBtn.blur();   // マウスで押した時はフォーカスを残さない（あとでキーを押すと枠が出たままになる）
+  });
+  // タッチでは、ほかの指が画面に乗っている間は click が来ない（Chrome）。ボタンの上で指を離した時に切り替え、あとの click は出さない
+  el.fullBtn.addEventListener('touchend', (e) => {
+    if (!e.cancelable) return;
+    e.preventDefault();
+    const t = e.changedTouches[0], r = el.fullBtn.getBoundingClientRect();
+    if (t.clientX >= r.left && t.clientX <= r.right && t.clientY >= r.top && t.clientY <= r.bottom) setFull(!state.full);
+  });
   el.volume.addEventListener('input', () => {
     state.volume = clamp01(Number(el.volume.value) / 100);
     if (audio) audio.setVolume(state.volume);
@@ -803,7 +810,7 @@ function initApp() {
     const idx = ['Digit1', 'Digit2', 'Digit3'].indexOf(e.code);
     if (idx >= 0 && CONFIG.octaves[idx] && !e.repeat) setOctave(CONFIG.octaves[idx].key);
     // F で文字をしまう／もどす、Esc でもどす（入力中のコントロールでは効かせない）
-    const typing = e.target instanceof Element && e.target.matches('input, select, textarea');
+    const typing = yieldsToControl(e.target) && e.target.matches('input, select, textarea');   // Tab で選んだ時だけ譲る
     if (e.code === 'KeyF' && !e.repeat && !typing) setFull(!state.full);
     if (e.code === 'Escape' && state.full) setFull(false);
   });

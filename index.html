@@ -82,6 +82,7 @@
   #app {
     height: 100dvh;
     display: grid;
+    grid-template-columns: minmax(0, 1fr);       /* ヘッダーの中身が広くても、画面の幅を超えない */
     grid-template-rows: auto minmax(0, 1fr) auto;
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   }
@@ -166,7 +167,7 @@
   .guide-off #guide, .guide-off #ribbonMarks { display: none; }
 
   #touchDot { fill: var(--accent); stroke: var(--ink); stroke-width: 2.5; }
-  #touchDot.intune { fill: var(--ok); }
+  #touchDot.intune { fill: var(--ok); stroke: #fff; stroke-width: 4.5; }   /* ぴったりは色だけでなく、白い太ふちでも示す */
   .eye { fill: var(--ink); }
   .blush { fill: var(--pink); }
   .mouth { fill: var(--mouth); stroke: var(--ink); stroke-width: 3.5; stroke-linejoin: round; }
@@ -193,6 +194,7 @@
   #app.full #fullBtn { opacity: 0.5; }
   #app.full #fullBtn:hover, #app.full #fullBtn:focus-visible { opacity: 1; }
   #app.full header, #app.full .controls { display: none; }
+  #app.full { grid-template-rows: minmax(0, 1fr); }   /* 残った舞台が画面の高さいっぱいを使う */
   #app.full #stage { padding: 6px 0; }
   #app.full #guide { display: none; }          /* 音名の文字もしまう（おなかの目盛りはガイドの設定のまま） */
 
@@ -318,6 +320,9 @@
       position: absolute; width: 1px; height: 1px; overflow: hidden;
       clip: rect(0 0 0 0); white-space: nowrap;
     }
+  }
+  @media (max-width: 340px) {
+    header { padding: 10px 10px; gap: 6px; }
   }
   @media (max-height: 560px) {
     .controls { padding: 6px 16px 8px; }
