@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1115">
+<title>のびのびシンセ</title>
+<meta name="description" content="長いおなかをなでると鳴く、体ののびる動物たちのシンセ。ねこ・ヒツジ・ウシ。">
+<link rel="icon" href="./favicon.svg">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0f1115;
+    --panel: #1a1e26;
+    --panel2: #242a36;
+    --line: #2c323e;
+    --text: #e8eaf0;
+    --dim: #9aa3b2;
+    --accent: #4cc2ff;
+    --accent-ink: #06202e;
+    --ok: #3ddc84;
+    --ink: #2a1b12;
+    --mouth: #8c2a3a;
+    --pink: #ff8fa3;
+    --mark: #c79f74;
+    --mark-sharp: #e6cfae;
+    --mark-c: #1b8fd1;
+  }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    -webkit-text-size-adjust: 100%;
+    overscroll-behavior: none;
+  }
+
+  button, input, select { font-family: inherit; color: inherit; }
+  button {
+    cursor: pointer;
+    border: none;
+    background: none;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  .tnum { font-variant-numeric: tabular-nums; }
+  [hidden] { display: none !important; }
+
+  /* ===== shell ===== */
+  #app {
+    height: 100dvh;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--line);
+    background: var(--panel);
+  }
+  h1 { font-size: 16px; font-weight: 700; letter-spacing: 0.02em; white-space: nowrap; }
+  .readout {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    min-width: 0;
+  }
+  /* 行の高さを固定: 「—」と音名とで字の高さが違い、音を出した瞬間に画面が動いて音程がずれるのを防ぐ */
+  #roName { font-size: 22px; font-weight: 700; min-width: 3.2em; text-align: right; line-height: 1.5; white-space: nowrap; }
+  #roSub { font-size: 12px; color: var(--dim); min-width: 9.5em; white-space: nowrap; }
+
+  /* ===== stage ===== */
+  #stage {
+    position: relative;
+    min-height: 0;
+    padding: 8px 16px 0;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+  #animal {
+    display: block;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+  }
+  #animal * { pointer-events: none; }
+  #animal #stemHit, #animal #headHit { pointer-events: all; touch-action: none; }
+  #stemHit { cursor: ns-resize; }
+  #headHit { cursor: pointer; }
+
+  /* 動物ごとの配色 */
+  #animal[data-animal="cat"]   { --fur: #f2a65a; --fur-shade: #d07f2f; --belly: #fff1dc; --skin: #f2a65a; }
+  #animal[data-animal="sheep"] { --fur: #f6f2ea; --fur-shade: #cfc6b4; --belly: #f7dcc6; --skin: #f1d3b8; }
+  #animal[data-animal="cow"]   { --fur: #fbfaf6; --fur-shade: #c4beb3; --belly: #ffcfc7; --skin: #fbfaf6;
+                                 --mark: #b07f5a; --mark-sharp: #dba594; --mark-c: #1580c0; }  /* 濃いめのおなかに合わせて目盛りも濃く */
+
+  .skin { fill: var(--skin); }
+  .wool { stroke: var(--fur-shade); stroke-width: 1.5; }
+  .ear-flat { stroke: var(--fur-shade); stroke-width: 2; }
+  .patch { fill: #2b2b30; }
+  .outline { fill: none; stroke: var(--fur-shade); stroke-width: 2; }
+  .hoof { fill: #3a3432; }
+  .horn { fill: none; stroke: #e6d7b5; stroke-width: 11; stroke-linecap: round; }
+  .muzzle, .ear-soft { fill: #f4b6ae; }
+  .fur-line.tail-thin { stroke-width: 8; }
+  .collar { fill: none; stroke: #c0483c; stroke-width: 7; stroke-linecap: round; }
+  .bell { fill: #f2c23e; stroke: #a9801f; stroke-width: 2; }
+  .fur, .paw { fill: var(--fur); }
+  .paw { stroke: var(--fur-shade); stroke-width: 2; }
+  .fur-line { fill: none; stroke: var(--fur); stroke-width: 20; stroke-linecap: round; }
+  .stripe path { fill: none; stroke: var(--fur-shade); stroke-width: 6; stroke-linecap: round; }
+  .ear { fill: var(--fur); stroke: var(--fur); stroke-width: 8; stroke-linejoin: round; }
+  .ear-in { fill: var(--pink); }
+  .whisker path { fill: none; stroke: var(--belly); stroke-width: 2.5; stroke-linecap: round; }
+  .nose { fill: var(--pink); stroke: var(--pink); stroke-width: 2; stroke-linejoin: round; }
+  .lip { fill: none; stroke: var(--ink); stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; }
+  #ribbon { fill: var(--belly); }
+  .mark { stroke: var(--mark); stroke-width: 1.5; }
+  .mark-sharp { stroke: var(--mark-sharp); stroke-width: 1; }
+  .mark-c { stroke: var(--mark-c); stroke-width: 3; }
+  .guide-label {
+    fill: var(--dim);
+    font-size: 13px;
+    text-anchor: end;
+    dominant-baseline: central;
+  }
+  .guide-c { fill: var(--accent); font-weight: 700; }
+  .guide-off #guide, .guide-off #ribbonMarks { display: none; }
+
+  #touchDot { fill: var(--accent); stroke: var(--ink); stroke-width: 2.5; }
+  #touchDot.intune { fill: var(--ok); }
+  .eye { fill: var(--ink); }
+  .blush { fill: var(--pink); }
+  .mouth { fill: var(--mouth); stroke: var(--ink); stroke-width: 3.5; stroke-linejoin: round; }
+
+  .hint {
+    padding: 6px 16px 8px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--dim);
+    text-align: center;
+  }
+  .hint kbd {
+    font: inherit;
+    padding: 0 5px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: var(--panel2);
+    color: var(--text);
+  }
+  @media (hover: none) { .hint .kb-only { display: none; } }
+
+  /* ===== controls ===== */
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 10px 14px;
+    padding: 10px 16px 12px;
+    border-top: 1px solid var(--line);
+    background: var(--panel);
+  }
+  .ctl { display: flex; align-items: center; gap: 8px; }
+  .ctl-label { font-size: 12px; color: var(--dim); white-space: nowrap; }
+  .seg {
+    display: flex;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+  }
+  .seg button {
+    min-width: 52px;
+    min-height: 40px;
+    padding: 0 12px;
+    font-size: 13px;
+    font-weight: 700;
+    background: var(--panel2);
+  }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+  .seg button:focus-visible { outline-offset: -3px; }
+  .toggle {
+    min-height: 40px;
+    padding: 0 14px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: var(--panel2);
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .toggle .tg-state { margin-left: 6px; font-size: 11px; color: var(--dim); }
+  .toggle[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .toggle[aria-pressed="true"] .tg-state { color: var(--accent-ink); }
+  #voice {
+    min-height: 40px;
+    padding: 0 10px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: var(--panel2);
+    font-size: 13px;
+    font-weight: 600;
+  }
+  #volume { width: 120px; accent-color: var(--accent); }
+
+  /* ===== start overlay ===== */
+  #startOverlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background: rgba(15, 17, 21, 0.82);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+  }
+  .start-card {
+    width: min(100%, 360px);
+    padding: 24px 22px;
+    border-radius: 16px;
+    border: 1px solid var(--line);
+    background: var(--panel);
+    text-align: center;
+  }
+  .start-card h2 { font-size: 20px; margin-bottom: 12px; }
+  .start-card ul {
+    list-style: none;
+    margin-bottom: 18px;
+    font-size: 13px;
+    line-height: 1.9;
+    color: var(--dim);
+    text-align: left;
+  }
+  .start-card li b { color: var(--text); font-weight: 600; }
+  #startBtn {
+    width: 100%;
+    min-height: 48px;
+    border-radius: 12px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-size: 16px;
+    font-weight: 700;
+  }
+  #startMsg { margin-top: 10px; font-size: 12px; color: var(--dim); line-height: 1.6; }
+
+  #debug {
+    position: fixed;
+    left: 8px;
+    top: 56px;
+    z-index: 5;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.7);
+    color: var(--ok);
+    font: 11px/1.5 ui-monospace, Menlo, monospace;
+    pointer-events: none;
+    white-space: pre;
+  }
+
+  @media (max-width: 420px) {
+    h1 { font-size: 14px; }
+    #roName { font-size: 19px; }
+    #volume { width: 64px; }
+    .controls { gap: 8px; padding: 8px 10px 10px; }
+    .ctl { gap: 6px; }
+    .seg button { min-width: 44px; padding: 0 8px; }
+    .toggle { padding: 0 10px; }
+    #voice { padding: 0 6px; }
+    #octLabel {
+      position: absolute; width: 1px; height: 1px; overflow: hidden;
+      clip: rect(0 0 0 0); white-space: nowrap;
+    }
+  }
+  @media (max-height: 560px) {
+    .hint { display: none; }
+    .controls { padding: 6px 16px 8px; }
+    .seg button, .toggle, #voice { min-height: 34px; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>のびのびシンセ</h1>
+    <div class="readout tnum">
+      <span id="roName">—</span>
+      <span id="roSub">おなかをタッチ</span>
+    </div>
+  </header>
+
+  <div id="stage">
+    <svg id="animal" data-animal="cat" viewBox="0 0 360 760" preserveAspectRatio="xMidYMid meet"
+         role="img" aria-label="どうぶつ本体。長いおなかで音程、上の顔で口の開き">
+      <defs>
+        <clipPath id="bodyClip"><rect x="132" y="120" width="96" height="600" rx="48"/></clipPath>
+        <clipPath id="cowHeadClip"><ellipse cx="180" cy="96" rx="64" ry="62"/></clipPath>
+      </defs>
+      <g id="guide"></g>
+
+      <!-- しっぽ -->
+      <path data-for="cat" class="fur-line" d="M220 694 C 272 706, 296 656, 274 612"/>
+      <circle data-for="sheep" class="fur wool" cx="236" cy="684" r="17"/>
+      <g data-for="cow" style="display:none">
+        <path class="fur-line tail-thin" d="M222 690 C 262 698, 280 664, 270 630"/>
+        <ellipse class="patch" cx="269" cy="620" rx="9" ry="15" transform="rotate(-12 269 620)"/>
+      </g>
+
+      <!-- 胴体 -->
+      <g data-for="sheep" class="fur wool">
+        <circle cx="134" cy="160" r="13"/><circle cx="134" cy="186" r="13"/><circle cx="134" cy="212" r="13"/>
+        <circle cx="134" cy="238" r="13"/><circle cx="134" cy="264" r="13"/><circle cx="134" cy="290" r="13"/>
+        <circle cx="134" cy="316" r="13"/><circle cx="134" cy="342" r="13"/><circle cx="134" cy="368" r="13"/>
+        <circle cx="134" cy="394" r="13"/><circle cx="134" cy="420" r="13"/><circle cx="134" cy="446" r="13"/>
+        <circle cx="134" cy="472" r="13"/><circle cx="134" cy="498" r="13"/><circle cx="134" cy="524" r="13"/>
+        <circle cx="134" cy="550" r="13"/><circle cx="134" cy="576" r="13"/><circle cx="134" cy="602" r="13"/>
+        <circle cx="134" cy="628" r="13"/><circle cx="134" cy="654" r="13"/><circle cx="134" cy="680" r="13"/>
+        <circle cx="226" cy="160" r="13"/><circle cx="226" cy="186" r="13"/><circle cx="226" cy="212" r="13"/>
+        <circle cx="226" cy="238" r="13"/><circle cx="226" cy="264" r="13"/><circle cx="226" cy="290" r="13"/>
+        <circle cx="226" cy="316" r="13"/><circle cx="226" cy="342" r="13"/><circle cx="226" cy="368" r="13"/>
+        <circle cx="226" cy="394" r="13"/><circle cx="226" cy="420" r="13"/><circle cx="226" cy="446" r="13"/>
+        <circle cx="226" cy="472" r="13"/><circle cx="226" cy="498" r="13"/><circle cx="226" cy="524" r="13"/>
+        <circle cx="226" cy="550" r="13"/><circle cx="226" cy="576" r="13"/><circle cx="226" cy="602" r="13"/>
+        <circle cx="226" cy="628" r="13"/><circle cx="226" cy="654" r="13"/><circle cx="226" cy="680" r="13"/>
+      </g>
+      <rect class="fur" x="132" y="120" width="96" height="600" rx="48"/>
+      <g data-for="cat" class="stripe">
+        <path d="M136 280 q14 5 24 0"/><path d="M136 380 q14 5 24 0"/><path d="M136 480 q14 5 24 0"/>
+        <path d="M136 580 q14 5 24 0"/><path d="M136 670 q14 5 24 0"/>
+        <path d="M224 280 q-14 5 -24 0"/><path d="M224 380 q-14 5 -24 0"/><path d="M224 480 q-14 5 -24 0"/>
+        <path d="M224 580 q-14 5 -24 0"/><path d="M224 670 q-14 5 -24 0"/>
+      </g>
+      <g data-for="cow" class="patch" clip-path="url(#bodyClip)" style="display:none">
+        <ellipse cx="226" cy="236" rx="22" ry="30"/><ellipse cx="130" cy="318" rx="28" ry="44"/>
+        <ellipse cx="232" cy="432" rx="26" ry="50"/><ellipse cx="128" cy="560" rx="24" ry="36"/>
+        <ellipse cx="230" cy="646" rx="28" ry="32"/>
+      </g>
+      <rect data-for="cow" class="outline" x="132" y="120" width="96" height="600" rx="48" style="display:none"/>
+
+      <!-- 後ろ足 -->
+      <ellipse class="paw" cx="152" cy="724" rx="24" ry="13"/>
+      <ellipse class="paw" cx="208" cy="724" rx="24" ry="13"/>
+      <g data-for="cow" class="hoof" style="display:none">
+        <ellipse cx="146" cy="729" rx="15" ry="7"/><ellipse cx="214" cy="729" rx="15" ry="7"/>
+      </g>
+
+      <!-- おなか（タッチ面） -->
+      <rect id="ribbon" x="158" y="200" width="44" height="490" rx="22"/>
+      <g id="ribbonMarks"></g>
+      <circle id="touchDot" cx="180" cy="200" r="12" visibility="hidden"/>
+
+      <!-- 前足 -->
+      <ellipse class="paw" cx="150" cy="180" rx="14" ry="17"/>
+      <ellipse class="paw" cx="210" cy="180" rx="14" ry="17"/>
+      <g data-for="cow" class="hoof" style="display:none">
+        <ellipse cx="150" cy="191" rx="10" ry="5"/><ellipse cx="210" cy="191" rx="10" ry="5"/>
+      </g>
+
+      <!-- 顔（動物ごとに切り替え） -->
+      <g id="head">
+        <g class="face" data-for="cat">
+          <path class="ear" d="M106 72 L110 16 L158 46 Z"/>
+          <path class="ear" d="M254 72 L250 16 L202 46 Z"/>
+          <path class="ear-in" d="M120 60 L122 34 L144 48 Z"/>
+          <path class="ear-in" d="M240 60 L238 34 L216 48 Z"/>
+          <ellipse class="fur" cx="180" cy="100" rx="84" ry="70"/>
+          <g class="stripe">
+            <path d="M180 34 v16"/><path d="M162 38 l3 13"/><path d="M198 38 l-3 13"/>
+          </g>
+          <g class="whisker">
+            <path d="M122 112 L74 102"/><path d="M122 121 L72 126"/>
+            <path d="M238 112 L286 102"/><path d="M238 121 L288 126"/>
+          </g>
+          <ellipse data-role="blushL" class="blush" cx="128" cy="120" rx="12" ry="7" opacity="0"/>
+          <ellipse data-role="blushR" class="blush" cx="232" cy="120" rx="12" ry="7" opacity="0"/>
+          <ellipse data-role="eyeL" class="eye" cx="148" cy="92" rx="8" ry="10"/>
+          <ellipse data-role="eyeR" class="eye" cx="212" cy="92" rx="8" ry="10"/>
+          <path data-role="mouth" class="mouth" d="" opacity="0"/>
+          <path class="nose" d="M173 106 h14 l-7 8 z"/>
+          <path class="lip" d="M180 114 v6 M180 120 q-9 11 -20 2 M180 120 q9 11 20 2"/>
+        </g>
+
+        <g class="face" data-for="sheep" style="display:none">
+          <ellipse class="skin ear-flat" cx="98" cy="96" rx="26" ry="12" transform="rotate(-14 98 96)"/>
+          <ellipse class="skin ear-flat" cx="262" cy="96" rx="26" ry="12" transform="rotate(14 262 96)"/>
+          <ellipse class="skin" cx="180" cy="106" rx="66" ry="62"/>
+          <g class="fur wool">
+            <circle cx="126" cy="72" r="20"/><circle cx="234" cy="72" r="20"/>
+            <circle cx="150" cy="52" r="24"/><circle cx="210" cy="52" r="24"/>
+            <circle cx="180" cy="42" r="26"/><circle cx="180" cy="66" r="22"/>
+          </g>
+          <ellipse data-role="blushL" class="blush" cx="132" cy="126" rx="12" ry="7" opacity="0"/>
+          <ellipse data-role="blushR" class="blush" cx="228" cy="126" rx="12" ry="7" opacity="0"/>
+          <ellipse data-role="eyeL" class="eye" cx="152" cy="102" rx="7" ry="9"/>
+          <ellipse data-role="eyeR" class="eye" cx="208" cy="102" rx="7" ry="9"/>
+          <path data-role="mouth" class="mouth" d="" opacity="0"/>
+          <path class="nose" d="M172 116 h16 l-8 9 z"/>
+          <path class="lip" d="M180 125 v5 M180 130 q-8 9 -18 2 M180 130 q8 9 18 2"/>
+        </g>
+
+        <g class="face" data-for="cow" style="display:none">
+          <path class="collar" d="M150 158 Q180 176 210 158"/>
+          <circle class="bell" cx="180" cy="176" r="10"/>
+          <path class="horn" d="M140 50 C 128 42, 120 28, 124 12"/>
+          <path class="horn" d="M220 50 C 232 42, 240 28, 236 12"/>
+          <ellipse class="skin ear-flat" cx="100" cy="82" rx="27" ry="13" transform="rotate(-18 100 82)"/>
+          <ellipse class="skin ear-flat" cx="260" cy="82" rx="27" ry="13" transform="rotate(18 260 82)"/>
+          <ellipse class="ear-soft" cx="101" cy="83" rx="16" ry="6.5" transform="rotate(-18 101 83)"/>
+          <ellipse class="ear-soft" cx="259" cy="83" rx="16" ry="6.5" transform="rotate(18 259 83)"/>
+          <ellipse class="skin ear-flat" cx="180" cy="96" rx="64" ry="62"/>
+          <g class="patch" clip-path="url(#cowHeadClip)">
+            <ellipse cx="140" cy="52" rx="32" ry="27"/><ellipse cx="252" cy="88" rx="18" ry="24"/>
+          </g>
+          <ellipse data-role="blushL" class="blush" cx="133" cy="110" rx="9" ry="5.5" opacity="0"/>
+          <ellipse data-role="blushR" class="blush" cx="227" cy="110" rx="9" ry="5.5" opacity="0"/>
+          <ellipse class="muzzle" cx="180" cy="134" rx="47" ry="33"/>
+          <ellipse data-role="eyeL" class="eye" cx="152" cy="90" rx="7" ry="9"/>
+          <ellipse data-role="eyeR" class="eye" cx="208" cy="90" rx="7" ry="9"/>
+          <ellipse class="eye" cx="164" cy="124" rx="5" ry="7"/><ellipse class="eye" cx="196" cy="124" rx="5" ry="7"/>
+          <path class="lip" d="M162 143 Q180 152 198 143"/>
+          <path data-role="mouth" class="mouth" d="" opacity="0"/>
+        </g>
+      </g>
+
+      <!-- 当たり判定（顔が上） -->
+      <rect id="stemHit" x="120" y="176" width="120" height="540" fill="transparent"/>
+      <ellipse id="headHit" cx="180" cy="100" rx="84" ry="70" fill="transparent"/>
+    </svg>
+  </div>
+
+  <p class="hint">
+おなかをなでる＝鳴く ／ 顔を押す<span class="kb-only">・<kbd>Space</kbd></span>＝大きく鳴く ／ なでながら横にずらしても口があく
+    <span class="kb-only">／ <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd>＝オクターブ</span>
+  </p>
+
+  <div class="controls">
+    <label class="ctl">
+      <span class="ctl-label">どうぶつ</span>
+      <select id="voice"></select>
+    </label>
+    <div class="ctl">
+      <span class="ctl-label" id="octLabel">オクターブ</span>
+      <div class="seg" id="octaveSeg" role="group" aria-labelledby="octLabel"></div>
+    </div>
+    <button type="button" class="toggle" id="guideBtn" aria-pressed="true">ガイド<span class="tg-state">ON</span></button>
+    <button type="button" class="toggle" id="snapBtn" aria-pressed="false">スナップ<span class="tg-state">OFF</span></button>
+    <label class="ctl">
+      <span class="ctl-label">音量</span>
+      <input type="range" id="volume" min="0" max="100" step="1" value="70">
+    </label>
+  </div>
+</div>
+
+<div id="startOverlay" role="dialog" aria-modal="true" aria-labelledby="startTitle">
+  <div class="start-card">
+    <h2 id="startTitle">のびのびシンセ</h2>
+    <ul>
+      <li><b>おなかをなでる</b> … 鳴く（上ほど高い声）</li>
+      <li><b>顔を押す</b> … もっと大きく鳴く</li>
+      <li><b>どうぶつ</b> … ねこ・ヒツジ・ウシから選ぶ</li>
+      <li><b>指をゆらす</b> … ビブラート</li>
+    </ul>
+    <button type="button" id="startBtn" autofocus>タップしてはじめる</button>
+    <p id="startMsg">音が出ます。スマホはマナーモードを解除してください。</p>
+  </div>
+</div>
+
+<pre id="debug" hidden></pre>
+
+<script src="./app.js" defer></script>
+</body>
+</html>
