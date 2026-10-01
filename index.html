@@ -171,6 +171,31 @@
   .blush { fill: var(--pink); }
   .mouth { fill: var(--mouth); stroke: var(--ink); stroke-width: 3.5; stroke-linejoin: round; }
 
+  /* ===== 文字をしまう（どうぶつを画面いっぱいに） ===== */
+  #fullBtn {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: rgba(26, 30, 38, 0.72);
+    color: var(--text);
+  }
+  #fullBtn svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+  #fullBtn .i-shrink { display: none; }
+  #app.full #fullBtn .i-expand { display: none; }
+  #app.full #fullBtn .i-shrink { display: inline; }
+  #app.full #fullBtn { opacity: 0.5; }
+  #app.full #fullBtn:hover, #app.full #fullBtn:focus-visible { opacity: 1; }
+  #app.full header, #app.full .hint, #app.full .controls { display: none; }
+  #app.full #stage { padding: 6px 0; }
+  #app.full #guide { display: none; }          /* 音名の文字もしまう（おなかの目盛りはガイドの設定のまま） */
+
   .hint {
     padding: 6px 16px 8px;
     font-size: 12px;
@@ -464,11 +489,17 @@
       <rect id="stemHit" x="120" y="176" width="120" height="540" fill="transparent"/>
       <ellipse id="headHit" cx="180" cy="100" rx="84" ry="70" fill="transparent"/>
     </svg>
+    <button type="button" id="fullBtn" aria-pressed="false" aria-label="文字をしまって、どうぶつを画面いっぱいにする">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path class="i-expand" d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>
+        <path class="i-shrink" d="M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5"/>
+      </svg>
+    </button>
   </div>
 
   <p class="hint">
 おなかをなでる＝鳴く ／ 顔を押す<span class="kb-only">・<kbd>Space</kbd></span>＝大きく鳴く ／ なでながら横にずらしても口があく
-    <span class="kb-only">／ <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd>＝オクターブ</span>
+    <span class="kb-only">／ <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd>＝オクターブ ／ <kbd>F</kbd>＝文字をしまう</span>
   </p>
 
   <div class="controls">

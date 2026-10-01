@@ -542,6 +542,7 @@ function initApp() {
     roName: $('roName'), roSub: $('roSub'),
     voice: $('voice'), octaveSeg: $('octaveSeg'), guideBtn: $('guideBtn'), snapBtn: $('snapBtn'), volume: $('volume'),
     overlay: $('startOverlay'), startBtn: $('startBtn'), startMsg: $('startMsg'),
+    app: $('app'), fullBtn: $('fullBtn'),
     debug: $('debug'),
   };
 
@@ -560,6 +561,7 @@ function initApp() {
     guide: typeof saved.guide === 'boolean' ? saved.guide : true,
     snap: typeof saved.snap === 'boolean' ? saved.snap : false,
     volume: typeof saved.volume === 'number' ? clamp01(saved.volume) : CONFIG.volumeDefault,
+    full: saved.full === true,    // 文字と操作部をしまって、どうぶつを画面いっぱいにする
     mouth: 0,                     // 平滑化済みの口の開き
     vowelBack: 0,                 // 母音の通り道 (0=開く向き / 1=閉じる向き)
     slide: 0,                     // 横スライド由来の開き
@@ -573,6 +575,7 @@ function initApp() {
     try {
       localStorage.setItem(CONFIG.storageKey, JSON.stringify({
         voice: state.voice, octave: state.octave, guide: state.guide, snap: state.snap, volume: state.volume,
+        full: state.full,
       }));
     } catch (e) { /* private mode 等では保存しない */ }
   };
@@ -650,6 +653,19 @@ function initApp() {
     el.snapBtn.querySelector('.tg-state').textContent = state.snap ? 'ON' : 'OFF';
     el.volume.value = String(Math.round(state.volume * 100));
     el.voice.value = state.voice;
+    el.app.classList.toggle('full', state.full);
+    el.fullBtn.setAttribute('aria-pressed', String(state.full));
+    el.fullBtn.setAttribute('aria-label', state.full ? TEXT_FULL.off : TEXT_FULL.on);
+    el.fullBtn.title = state.full ? TEXT_FULL.off : TEXT_FULL.on;
+  }
+
+  // 文字と操作部をしまう／もどす。画面の大きさが変わるので、鳴っている音は止める
+  const TEXT_FULL = { on: '文字をしまって、どうぶつを画面いっぱいにする', off: '文字とボタンをもどす' };
+  function setFull(on) {
+    if (state.full === on) return;
+    allOff();
+    state.full = on;
+    saveSettings(); renderControls();
   }
 
   function setOctave(key) {
@@ -686,6 +702,7 @@ function initApp() {
   el.snapBtn.addEventListener('click', () => {
     state.snap = !state.snap; saveSettings(); renderControls(); updatePitch(false);
   });
+  el.fullBtn.addEventListener('click', () => setFull(!state.full));
   el.volume.addEventListener('input', () => {
     state.volume = clamp01(Number(el.volume.value) / 100);
     if (audio) audio.setVolume(state.volume);
@@ -785,6 +802,10 @@ function initApp() {
     }
     const idx = ['Digit1', 'Digit2', 'Digit3'].indexOf(e.code);
     if (idx >= 0 && CONFIG.octaves[idx] && !e.repeat) setOctave(CONFIG.octaves[idx].key);
+    // F で文字をしまう／もどす、Esc でもどす（入力中のコントロールでは効かせない）
+    const typing = e.target instanceof Element && e.target.matches('input, select, textarea');
+    if (e.code === 'KeyF' && !e.repeat && !typing) setFull(!state.full);
+    if (e.code === 'Escape' && state.full) setFull(false);
   });
   window.addEventListener('keyup', (e) => {
     if (e.code !== 'Space') return;
